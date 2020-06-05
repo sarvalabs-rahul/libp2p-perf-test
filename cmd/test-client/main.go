@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -19,11 +20,17 @@ import (
 	quic "github.com/libp2p/go-libp2p-quic-transport"
 	tcp "github.com/libp2p/go-tcp-transport"
 	ma "github.com/multiformats/go-multiaddr"
+
+	_ "net/http/pprof"
 )
 
 const TestProtocol = protocol.ID("/libp2p/test/data")
 
 func main() {
+	go func() {
+		log.Println(http.ListenAndServe("0.0.0.0:6060", nil))
+	}()
+
 	streams := flag.Int("streams", 1, "number of parallel download streams")
 	flag.Parse()
 

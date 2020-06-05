@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"time"
 
@@ -15,6 +16,8 @@ import (
 
 	quic "github.com/libp2p/go-libp2p-quic-transport"
 	tcp "github.com/libp2p/go-tcp-transport"
+
+	_ "net/http/pprof"
 )
 
 const TestProtocol = protocol.ID("/libp2p/test/data")
@@ -22,6 +25,10 @@ const TestProtocol = protocol.ID("/libp2p/test/data")
 var testFilePath string
 
 func main() {
+	go func() {
+		log.Println(http.ListenAndServe("0.0.0.0:6060", nil))
+	}()
+
 	port := flag.Int("port", 4001, "server listen port")
 	testFile := flag.String("file", "data", "data file to serve")
 
