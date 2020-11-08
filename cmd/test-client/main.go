@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -80,16 +81,10 @@ func main() {
 		}
 		defer s.Close()
 
-		file, err := os.OpenFile("/dev/null", os.O_WRONLY, 0)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer file.Close()
-
 		log.Printf("Transfering data...")
 
 		start := time.Now()
-		n, err := io.Copy(file, s)
+		n, err := io.Copy(ioutil.Discard, s)
 		if err != nil {
 			log.Printf("Error receiving data: %s", err)
 		}
