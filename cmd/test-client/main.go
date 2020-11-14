@@ -61,6 +61,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer host.Close()
 
 	log.Printf("Connecting to %s", pi.ID.Pretty())
 
