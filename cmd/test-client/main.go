@@ -79,6 +79,7 @@ func main() {
 		s, err := host.NewStream(cctx, pi.ID, TestProtocol)
 		if err != nil {
 			log.Fatal(err)
+			return
 		}
 		defer s.Close()
 
@@ -88,6 +89,7 @@ func main() {
 		n, err := io.Copy(ioutil.Discard, s)
 		if err != nil {
 			log.Printf("Error receiving data: %s", err)
+			return
 		}
 		end := time.Now()
 
@@ -101,6 +103,7 @@ func main() {
 			s, err := host.NewStream(cctx, pi.ID, TestProtocol)
 			if err != nil {
 				log.Fatal(err)
+				return
 			}
 			defer s.Close()
 			dataStreams = append(dataStreams, s)
@@ -122,6 +125,7 @@ func main() {
 				n, err := io.Copy(file, dataStreams[i])
 				if err != nil {
 					log.Printf("Error receiving data: %s", err)
+					return
 				}
 				atomic.AddInt64(&count, n)
 			}(i)
