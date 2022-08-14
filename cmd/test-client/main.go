@@ -22,6 +22,8 @@ import (
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/p2p/muxer/mplex"
 	"github.com/libp2p/go-libp2p/p2p/muxer/yamux"
+	"github.com/libp2p/go-libp2p/p2p/security/noise"
+	tls "github.com/libp2p/go-libp2p/p2p/security/tls"
 	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 
@@ -37,6 +39,7 @@ func main() {
 	}()
 
 	muxer := flag.String("muxer", "yamux", "stream multiplexer")
+	security := flag.String("security", "noise", "security handshake")
 	streams := flag.Int("streams", 1, "number of parallel download streams")
 	size := flag.String("size", "1 GB", "file size to download")
 	flag.Parse()
@@ -81,11 +84,24 @@ func main() {
 		}
 	}
 
+	var secOpt libp2p.Option
+	switch *security {
+	case "tls":
+		secOpt = libp2p.Security(tls.ID, tls.New)
+	case "noise":
+		secOpt = libp2p.Security(noise.ID, noise.New)
+	default:
+		if !isQuicAddr {
+			log.Fatalf("unknown security: %s", *security)
+		}
+	}
+
 	host, err := libp2p.New(
 		libp2p.NoListenAddrs,
 		libp2p.Transport(tcp.NewTCPTransport),
 		libp2p.Transport(quic.NewTransport),
 		muxerOpt,
+		secOpt,
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -95,7 +111,7 @@ func main() {
 	if isQuicAddr {
 		log.Printf("Connecting to %s", pi.ID.Pretty())
 	} else {
-		log.Printf("Connecting to %s using %s", pi.ID.Pretty(), *muxer)
+		log.Printf("Connecting to %s using %s/%s", pi.ID.Pretty(), *security, *muxer)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
