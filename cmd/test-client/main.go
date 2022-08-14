@@ -5,12 +5,15 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	manet "github.com/multiformats/go-multiaddr/net"
 
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -45,6 +48,12 @@ func main() {
 	a, err := ma.NewMultiaddr(flag.Args()[0])
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	if _, err := a.ValueForProtocol(ma.P_P2P); err != nil {
+		// raw TCP address
+		downloadRawTCP(a, total)
+		return
 	}
 
 	pi, err := peer.AddrInfoFromP2pAddr(a)
@@ -129,6 +138,39 @@ func main() {
 	}
 
 	took := end.Sub(start)
-	bandwidth := float64(downloaded) / float64(took.Milliseconds())
+	bandwidth := float64(downloaded) / took.Seconds()
 	log.Printf("Received %d bytes in %s (%s/s)", downloaded, took, datasize.ByteSize(bandwidth).HumanReadable())
+}
+
+func downloadRawTCP(addr ma.Multiaddr, total uint64) {
+	netw, host, err := manet.DialArgs(addr)
+	if err != nil {
+		log.Fatal(err)
+	}
+	raddr, err := net.ResolveTCPAddr(netw, host)
+	if err != nil {
+		log.Fatal(err)
+	}
+	conn, err := net.DialTCP(netw, nil, raddr)
+	if err != nil {
+		log.Fatal(err)
+	}
+	b := make([]byte, 1<<11)
+	var count uint64
+	start := time.Now()
+	for {
+		n, err := conn.Read(b)
+		if err != nil {
+			log.Fatal(err)
+		}
+		count += uint64(n)
+		if count > total {
+			break
+		}
+	}
+	end := time.Now()
+
+	took := end.Sub(start)
+	bandwidth := float64(count) / took.Seconds()
+	log.Printf("Received %d bytes in %s (%s/s)", count, took, datasize.ByteSize(bandwidth).HumanReadable())
 }
