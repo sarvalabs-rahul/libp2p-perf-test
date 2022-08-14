@@ -1,8 +1,9 @@
 module github.com/vyzo/libp2p-perf-test
 
-go 1.17
+go 1.19
 
 require (
+	github.com/c2h5oh/datasize v0.0.0-20220606134207-859f65c6625b
 	github.com/libp2p/go-libp2p v0.21.0
 	github.com/libp2p/go-libp2p-core v0.19.1
 	github.com/multiformats/go-multiaddr v0.6.0
