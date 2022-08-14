@@ -2,13 +2,11 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
-	"os"
-	"time"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/network"
@@ -25,20 +23,20 @@ const TestProtocol = protocol.ID("/libp2p/test/data")
 
 var testFilePath string
 
+var randomData []byte
+
+func init() {
+	randomData = make([]byte, 1<<20)
+	rand.Read(randomData)
+}
+
 func main() {
 	go func() {
 		log.Println(http.ListenAndServe("0.0.0.0:6060", nil))
 	}()
 
 	port := flag.Int("port", 4001, "server listen port")
-	testFile := flag.String("file", "data", "data file to serve")
-
 	flag.Parse()
-
-	if _, err := os.Stat(*testFile); err != nil {
-		log.Fatal(err)
-	}
-	testFilePath = *testFile
 
 	privKey, _, err := crypto.GenerateECDSAKeyPair(bytes.NewReader(bytes.Repeat([]byte{1}, 100)))
 	if err != nil {
@@ -70,18 +68,9 @@ func handleStream(s network.Stream) {
 	defer s.Close()
 
 	log.Printf("Incoming connection from %s", s.Conn().RemoteMultiaddr())
-
-	file, err := os.Open(testFilePath)
-	if err != nil {
-		log.Fatal(err)
+	for {
+		if _, err := s.Write(randomData); err != nil {
+			return
+		}
 	}
-	defer file.Close()
-
-	start := time.Now().UnixNano()
-	n, err := io.Copy(s, file)
-	if err != nil {
-		log.Printf("Error transmiting file: %s", err)
-	}
-	end := time.Now().UnixNano()
-	log.Printf("Transmitted %d bytes in %s", n, time.Duration(end-start))
 }
