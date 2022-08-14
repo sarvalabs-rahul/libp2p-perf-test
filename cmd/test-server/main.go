@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -11,13 +10,13 @@ import (
 	"os"
 	"time"
 
-	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/protocol"
 
-	quic "github.com/libp2p/go-libp2p-quic-transport"
-	tcp "github.com/libp2p/go-tcp-transport"
+	"github.com/libp2p/go-libp2p"
+	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
+	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 
 	_ "net/http/pprof"
 )
@@ -41,13 +40,11 @@ func main() {
 	}
 	testFilePath = *testFile
 
-	ctx := context.Background()
-
 	privKey, _, err := crypto.GenerateECDSAKeyPair(bytes.NewReader(bytes.Repeat([]byte{1}, 100)))
 	if err != nil {
 		log.Fatal(err)
 	}
-	host, err := libp2p.New(ctx,
+	host, err := libp2p.New(
 		libp2p.ListenAddrStrings(
 			fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", *port),
 			fmt.Sprintf("/ip4/0.0.0.0/udp/%d/quic", *port),

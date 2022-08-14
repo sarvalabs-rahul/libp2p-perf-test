@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -13,13 +12,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
 
-	quic "github.com/libp2p/go-libp2p-quic-transport"
-	tcp "github.com/libp2p/go-tcp-transport"
+	"github.com/libp2p/go-libp2p"
+	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
+	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
+
 	ma "github.com/multiformats/go-multiaddr"
 
 	_ "net/http/pprof"
@@ -53,7 +53,7 @@ func main() {
 
 	ctx := context.Background()
 
-	host, err := libp2p.New(ctx,
+	host, err := libp2p.New(
 		libp2p.NoListenAddrs,
 		libp2p.Transport(tcp.NewTCPTransport),
 		libp2p.Transport(quic.NewTransport),
@@ -86,7 +86,7 @@ func main() {
 		log.Printf("Transfering data...")
 
 		start := time.Now()
-		n, err := io.Copy(ioutil.Discard, s)
+		n, err := io.Copy(io.Discard, s)
 		if err != nil {
 			log.Printf("Error receiving data: %s", err)
 			return
