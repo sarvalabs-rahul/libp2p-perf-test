@@ -14,6 +14,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/protocol"
 
 	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p/p2p/muxer/mplex"
+	"github.com/libp2p/go-libp2p/p2p/muxer/yamux"
 	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 
@@ -50,6 +52,8 @@ func main() {
 		),
 		libp2p.Transport(tcp.NewTCPTransport),
 		libp2p.Transport(quic.NewTransport),
+		libp2p.Muxer("/mplex/6.7.0", mplex.DefaultTransport),
+		libp2p.Muxer("/yamux/1.0.0", yamux.DefaultTransport),
 		libp2p.Identity(privKey),
 	)
 	if err != nil {
