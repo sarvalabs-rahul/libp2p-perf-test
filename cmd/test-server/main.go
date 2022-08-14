@@ -55,6 +55,7 @@ func main() {
 		libp2p.Muxer("/mplex/6.7.0", mplex.DefaultTransport),
 		libp2p.Muxer("/yamux/1.0.0", yamux.DefaultTransport),
 		libp2p.Identity(privKey),
+		libp2p.ResourceManager(network.NullResourceManager),
 	)
 	if err != nil {
 		log.Fatal(err)

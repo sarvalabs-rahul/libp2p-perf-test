@@ -102,6 +102,7 @@ func main() {
 		libp2p.Transport(quic.NewTransport),
 		muxerOpt,
 		secOpt,
+		libp2p.ResourceManager(network.NullResourceManager),
 	)
 	if err != nil {
 		log.Fatal(err)
