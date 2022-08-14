@@ -10,14 +10,12 @@ $ go install ./...
 ## Usage
 
 Programs:
-- `test-server` is the server serving a file, over TCP and QUIC.
+- `test-server` is the server serving random data over TCP and QUIC.
 - `test-client` is the client connecting to the server and downloading the served file.
 
-The server expects a file named `data` to serve (can override with `-data` option).
-So let's generate a random 1GiB file and start the server:
+The server sends data as long as the client keeps the stream open.
 
 ```
-$ dd bs=1024 count=1048576 if=/dev/urandom of=data
 $ test-server
 I am /ip4/127.0.0.1/udp/4001/quic/p2p/QmSfCAZ7kq8m3yuWip2gC6cE5YrpxtwDsC3wY4NMdj5a7Z
 I am /ip4/192.168.2.4/udp/4001/quic/p2p/QmSfCAZ7kq8m3yuWip2gC6cE5YrpxtwDsC3wY4NMdj5a7Z

@@ -4,9 +4,9 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -20,9 +20,8 @@ import (
 	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 
+	"github.com/c2h5oh/datasize"
 	ma "github.com/multiformats/go-multiaddr"
-
-	_ "net/http/pprof"
 )
 
 const TestProtocol = protocol.ID("/libp2p/test/data")
@@ -33,10 +32,12 @@ func main() {
 	}()
 
 	streams := flag.Int("streams", 1, "number of parallel download streams")
+	size := flag.String("size", "1 GB", "file size to download")
 	flag.Parse()
+	total := datasize.MustParseString(*size).Bytes()
 
 	if len(flag.Args()) != 1 {
-		fmt.Fprintf(os.Stderr, "Usage: %s [options] peer", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage: %s [options] peer\n", os.Args[0])
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
@@ -50,8 +51,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	ctx := context.Background()
+	fmt.Println(pi)
 
 	host, err := libp2p.New(
 		libp2p.NoListenAddrs,
@@ -65,75 +65,70 @@ func main() {
 
 	log.Printf("Connecting to %s", pi.ID.Pretty())
 
-	cctx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	err = host.Connect(cctx, *pi)
-	if err != nil {
+	if err := host.Connect(ctx, *pi); err != nil {
 		log.Fatal(err)
 	}
 
 	log.Printf("Connected; requesting data...")
 
-	if *streams == 1 {
-		s, err := host.NewStream(cctx, pi.ID, TestProtocol)
+	dataStreams := make([]network.Stream, 0, *streams)
+	for i := 0; i < *streams; i++ {
+		s, err := host.NewStream(ctx, pi.ID, TestProtocol)
 		if err != nil {
 			log.Fatal(err)
 			return
 		}
-		defer s.Close()
+		dataStreams = append(dataStreams, s)
+	}
 
-		log.Printf("Transfering data...")
+	log.Printf("Transferring data in %d parallel streams", *streams)
 
-		start := time.Now()
-		n, err := io.Copy(io.Discard, s)
-		if err != nil {
-			log.Printf("Error receiving data: %s", err)
-			return
-		}
-		end := time.Now()
+	var wg sync.WaitGroup
+	var end time.Time
 
-		log.Printf("Received %d bytes in %s", n, end.Sub(start))
-	} else {
-		var wg sync.WaitGroup
-		var count int64
+	start := time.Now()
+	var count atomic.Uint64
+	var downloaded uint64 // the total amount of data downloaded once we've crossed the threshold
+	var once sync.Once
 
-		dataStreams := make([]network.Stream, 0, *streams)
-		for i := 0; i < *streams; i++ {
-			s, err := host.NewStream(cctx, pi.ID, TestProtocol)
-			if err != nil {
-				log.Fatal(err)
-				return
-			}
-			defer s.Close()
-			dataStreams = append(dataStreams, s)
-		}
+	for i := 0; i < *streams; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
 
-		log.Printf("Transferring data in %d parallel streams", *streams)
+			b := make([]byte, 1<<11)
 
-		start := time.Now()
-		for i := 0; i < *streams; i++ {
-			wg.Add(1)
-			go func(i int) {
-				defer wg.Done()
-				file, err := os.OpenFile("/dev/null", os.O_WRONLY, 0)
+			for {
+				n, err := dataStreams[i].Read(b)
 				if err != nil {
-					log.Fatal(err)
-				}
-				defer file.Close()
-
-				n, err := io.Copy(file, dataStreams[i])
-				if err != nil {
-					log.Printf("Error receiving data: %s", err)
 					return
 				}
-				atomic.AddInt64(&count, n)
-			}(i)
-		}
+				t := count.Add(uint64(n))
 
-		wg.Wait()
-		end := time.Now()
-		log.Printf("Received %d bytes in %s", count, end.Sub(start))
-
+				// We've downloaded enough data.
+				// Record the result and reset all streams.
+				if t >= total {
+					once.Do(func() {
+						end = time.Now()
+						downloaded = count.Load()
+						for _, str := range dataStreams {
+							str.Reset()
+						}
+					})
+				}
+			}
+		}(i)
 	}
+	wg.Wait()
+
+	if downloaded < total {
+		log.Fatal("Failed to download all the data.")
+	}
+
+	took := end.Sub(start)
+	bandwidth := float64(downloaded) / float64(took.Milliseconds())
+	log.Printf("Received %d bytes in %s (%s/s)", downloaded, took, datasize.ByteSize(bandwidth).HumanReadable())
 }
