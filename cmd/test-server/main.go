@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -35,7 +36,7 @@ func main() {
 		log.Println(http.ListenAndServe("0.0.0.0:6060", nil))
 	}()
 
-	port := flag.Int("port", 4001, "server listen port")
+	port := flag.Int("port", 4001, "server listen port (raw TCP prot will be +1)")
 	flag.Parse()
 
 	privKey, _, err := crypto.GenerateECDSAKeyPair(bytes.NewReader(bytes.Repeat([]byte{1}, 100)))
@@ -54,12 +55,19 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	host.SetStreamHandler(TestProtocol, handleStream)
+
+	ln, err := net.ListenTCP("tcp4", &net.TCPAddr{IP: net.IPv4zero, Port: *port + 1})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer ln.Close()
+	go listenTCP(ln)
 
 	for _, addr := range host.Addrs() {
 		fmt.Printf("I am %s/p2p/%s\n", addr, host.ID())
 	}
-
-	host.SetStreamHandler(TestProtocol, handleStream)
+	fmt.Printf("Raw TCP on port %d\n", ln.Addr().(*net.TCPAddr).Port)
 
 	select {}
 }
@@ -72,5 +80,22 @@ func handleStream(s network.Stream) {
 		if _, err := s.Write(randomData); err != nil {
 			return
 		}
+	}
+}
+
+func listenTCP(ln *net.TCPListener) {
+	for {
+		conn, err := ln.AcceptTCP()
+		if err != nil {
+			return
+		}
+		log.Printf("Incoming connection from %s", conn.RemoteAddr())
+		go func() {
+			for {
+				if _, err := conn.Write(randomData); err != nil {
+					return
+				}
+			}
+		}()
 	}
 }
