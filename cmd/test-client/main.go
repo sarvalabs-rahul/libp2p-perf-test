@@ -20,6 +20,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/protocol"
 
 	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p/p2p/muxer/mplex"
+	"github.com/libp2p/go-libp2p/p2p/muxer/yamux"
 	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 
@@ -34,6 +36,7 @@ func main() {
 		log.Println(http.ListenAndServe("0.0.0.0:6060", nil))
 	}()
 
+	muxer := flag.String("muxer", "yamux", "stream multiplexer")
 	streams := flag.Int("streams", 1, "number of parallel download streams")
 	size := flag.String("size", "1 GB", "file size to download")
 	flag.Parse()
@@ -56,23 +59,44 @@ func main() {
 		return
 	}
 
+	var isQuicAddr bool
+	if _, err := a.ValueForProtocol(ma.P_QUIC); err == nil {
+		isQuicAddr = true
+	}
+
 	pi, err := peer.AddrInfoFromP2pAddr(a)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(pi)
+
+	var muxerOpt libp2p.Option
+	switch *muxer {
+	case "yamux":
+		muxerOpt = libp2p.Muxer("/yamux/1.0.0", yamux.DefaultTransport)
+	case "mplex":
+		muxerOpt = libp2p.Muxer("/mplex/6.7.0", mplex.DefaultTransport)
+	default:
+		if !isQuicAddr {
+			log.Fatalf("unknown muxer: %s", *muxer)
+		}
+	}
 
 	host, err := libp2p.New(
 		libp2p.NoListenAddrs,
 		libp2p.Transport(tcp.NewTCPTransport),
 		libp2p.Transport(quic.NewTransport),
+		muxerOpt,
 	)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer host.Close()
 
-	log.Printf("Connecting to %s", pi.ID.Pretty())
+	if isQuicAddr {
+		log.Printf("Connecting to %s", pi.ID.Pretty())
+	} else {
+		log.Printf("Connecting to %s using %s", pi.ID.Pretty(), *muxer)
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

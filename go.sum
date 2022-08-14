@@ -306,6 +306,8 @@ github.com/libp2p/go-libp2p-resource-manager v0.5.1 h1:jm0mdqn7yfh7wbUzlj948BYZX
 github.com/libp2p/go-libp2p-resource-manager v0.5.1/go.mod h1:CggtV6EZb+Y0dGh41q5ezO4udcVKyhcEFpydHD8EMe0=
 github.com/libp2p/go-libp2p-testing v0.1.1/go.mod h1:xaZWMJrPUM5GlDBxCeGUi7kI4eqnjVyavGroI2nxEM0=
 github.com/libp2p/go-libp2p-testing v0.11.0 h1:+R7FRl/U3Y00neyBSM2qgDzqz3HkWH24U9nMlascHL4=
+github.com/libp2p/go-mplex v0.7.0 h1:BDhFZdlk5tbr0oyFq/xv/NPGfjbnrsDam1EvutpBDbY=
+github.com/libp2p/go-mplex v0.7.0/go.mod h1:rW8ThnRcYWft/Jb2jeORBmPd6xuG3dGxWN/W168L9EU=
 github.com/libp2p/go-msgio v0.0.4/go.mod h1:63lBBgOTDKQL6EWazRMCwXsEeEeK9O2Cd+0+6OOuipQ=
 github.com/libp2p/go-msgio v0.2.0 h1:W6shmB+FeynDrUVl2dgFQvzfBZcXiyqY4VmpQLu9FqU=
 github.com/libp2p/go-msgio v0.2.0/go.mod h1:dBVM1gW3Jk9XqHkU4eKdGvVHdLa51hoGfll6jMJMSlY=
