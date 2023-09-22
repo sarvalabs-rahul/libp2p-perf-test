@@ -13,14 +13,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
 	manet "github.com/multiformats/go-multiaddr/net"
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
-	"github.com/libp2p/go-libp2p/p2p/muxer/mplex"
-	"github.com/libp2p/go-libp2p/p2p/muxer/yamux"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	tls "github.com/libp2p/go-libp2p/p2p/security/tls"
 	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
@@ -37,7 +36,6 @@ func main() {
 		log.Println(http.ListenAndServe("0.0.0.0:6060", nil))
 	}()
 
-	muxer := flag.String("muxer", "yamux", "stream multiplexer")
 	security := flag.String("security", "noise", "security handshake")
 	streams := flag.Int("streams", 1, "number of parallel download streams")
 	size := flag.String("size", "1 GB", "file size to download")
@@ -71,18 +69,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	var muxerOpt libp2p.Option
-	switch *muxer {
-	case "yamux":
-		muxerOpt = libp2p.Muxer("/yamux/1.0.0", yamux.DefaultTransport)
-	case "mplex":
-		muxerOpt = libp2p.Muxer("/mplex/6.7.0", mplex.DefaultTransport)
-	default:
-		if !isQuicAddr {
-			log.Fatalf("unknown muxer: %s", *muxer)
-		}
-	}
-
 	var secOpt libp2p.Option
 	switch *security {
 	case "tls":
@@ -95,13 +81,17 @@ func main() {
 		}
 	}
 
+	resourceManager, err := rcmgr.NewResourceManager(rcmgr.NewFixedLimiter(rcmgr.InfiniteLimits))
+	if err != nil {
+		panic(err)
+	}
+
 	host, err := libp2p.New(
 		libp2p.NoListenAddrs,
 		libp2p.Transport(tcp.NewTCPTransport),
 		libp2p.Transport(quic.NewTransport),
-		muxerOpt,
 		secOpt,
-		libp2p.ResourceManager(network.NullResourceManager),
+		libp2p.ResourceManager(resourceManager),
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -111,7 +101,7 @@ func main() {
 	if isQuicAddr {
 		log.Printf("Connecting to %s", pi.ID.Pretty())
 	} else {
-		log.Printf("Connecting to %s using %s/%s", pi.ID.Pretty(), *security, *muxer)
+		log.Printf("Connecting to %s using %s", pi.ID.Pretty(), *security)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
