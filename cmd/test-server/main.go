@@ -50,7 +50,7 @@ func main() {
 	host, err := libp2p.New(
 		libp2p.ListenAddrStrings(
 			fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", *port),
-			fmt.Sprintf("/ip4/0.0.0.0/udp/%d/quic", *port),
+			fmt.Sprintf("/ip4/0.0.0.0/udp/%d/quic-v1", *port),
 		),
 		libp2p.ChainOptions(libp2p.Transport(tcp.NewTCPTransport),
 			libp2p.Transport(quic.NewTransport)),
